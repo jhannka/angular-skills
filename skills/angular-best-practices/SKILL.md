@@ -1,228 +1,45 @@
 ---
 name: angular-best-practices
-description: >
-  Global Angular best practices: component lifecycle, clean code, lazy loading with permissions, and *ngFor trackBy performance.
-  Trigger: When creating, refactoring, or updating Angular components, modules, or templates.
+description: "Trigger: Angular component, module, template, ngOnInit, subscription, lazy module, permissions guard, ngFor trackBy, select, SweetAlert in frontend_rh. Lifecycle, subscriptions, routes and template rules for Angular 13."
 license: Apache-2.0
 metadata:
-  author: gentleman-programming
-  version: "1.0"
+  author: rh-team
+  version: "2.1"
+  scope: project
+  stack: "Angular 13.2, TypeScript 4.5, RxJS 6.5, NGXS 3.7, ag-grid 18"
 ---
 
-# Angular Global Best Practices
+## Activation Contract
 
-This skill consolidates global rules and patterns for Angular development.
+Load before creating or changing an Angular component, module, route, template or SCSS under `src/app`. Class member order and state isolation: skill `angular-component-structure`.
 
-## 1. Clean Components & Types
+## Hard Rules
 
-- **No `any` Types**: canonical rule and examples live in `typescript-best-practices` skill §1 — also enforced project-wide via `angular-component-structure`'s Hard Rules.
-- **`ngOnDestroy` Placement**: The `ngOnDestroy` lifecycle hook must ALWAYS be placed at the very end of the component class (bucket 5 in `angular-component-structure`'s class-member ordering — see that skill for the full 8-bucket ordering this project enforces).
+- The constructor only injects. Form creation, loading and subscriptions go in `ngOnInit` through `createForm()`, `initSubscriptions()` and `loadData()`.
+- Subscribe once, in `ngOnInit`/`initSubscriptions`, with `takeUntil(this.destroy$)`. Reload methods only dispatch actions, never subscribe.
+- `ngOnDestroy` is the last member: `destroy$.next(true)` then `destroy$.complete()`; never `unsubscribe()` on the Subject.
+- Lazy feature modules use `loadChildren` with a dynamic import; the route is protected with `NgxPermissionsGuard` and `redirectTo: '/admin/403'`. Permission codes match across menu, routing and guards.
+- Every `*ngFor` has `trackBy` returning a stable id; never iterate an inline array literal.
+- Every select control is `<app-quick-search>`; raw `<mat-select>` or native `<select>` without search is not allowed.
+- Alerts go through `SweetAlertHelper`; no `import Swal from 'sweetalert2'` in new or refactored code.
+- An event binding calls the method: `(click)="validate()"`. `(click)="validate"` only evaluates the reference and the button does nothing (PR 1864, "Validar datos" in `empleado_info_general`).
+- Template and SCSS details (heading semantics, accented Spanish text, `rem` units, blob downloads, `nowrap` tables, shared wizard config, numeric `@Input`, template getters, DOM event guards, `ng-deep`, large tables) are in `references/angular-ui-rules.md`.
 
-## 2. Component Lifecycle & Constructor Separation
+## Decision Gates
 
-Constructor MUST inject dependencies only. Form initialization, data loading, and subscriptions belong in `ngOnInit`, NOT the constructor.
+| Need | Read |
+|------|------|
+| Lifecycle, subscriptions, lazy routes, `trackBy`, selector and alert patterns with examples | `references/angular-rules.md` |
+| Template, SCSS, tables, accessibility, downloads | `references/angular-ui-rules.md` |
+| Class member order, state in NGXS | skill `angular-component-structure` |
+| Typing and forms | skill `typescript-best-practices` |
 
-**Rules**:
-1. **Constructor**: ONLY inject services/dependencies via constructor params. No form creation, API calls, subscriptions, or data initialization.
-2. **ngOnInit**: Initialize component state (call `createForm()`, `loadData()`, set defaults).
-3. **Separate methods**: Create `createForm()`, `loadData()`, etc. as private methods for single responsibility and testability.
-4. **ngOnDestroy**: Always implement for components with subscriptions (use `takeUntil` and call `next(true)` / `unsubscribe()`).
-5. **Interfaces**: Implement `OnInit, OnDestroy` when used.
+## Execution Steps
 
-**Example**:
-```typescript
-export class MyComponent implements OnInit, OnDestroy {
-  private destroy = new Subject<boolean>();
-  formData: FormGroup;
+1. Read the matching section of the reference.
+2. Match the surrounding module: same permission codes, same alert and selector components.
+3. Run `npm run lint` and the spec of the touched component (`ng test --include <spec>`).
 
-  constructor(private fb: FormBuilder, private http: HttpClient) {}
+## Output Contract
 
-  ngOnInit(): void {
-    this.createForm();
-    this.loadData();
-  }
-
-  private createForm(): void {
-    this.formData = this.fb.group({ /* ... */ });
-  }
-
-  private loadData(): void {
-    this.http.get('/api/data')
-      .pipe(takeUntil(this.destroy))
-      .subscribe(data => this.formData.patchValue(data));
-  }
-
-  // ALWAYS AT THE BOTTOM
-  ngOnDestroy(): void {
-    this.destroy.next(true);
-    this.destroy.unsubscribe();
-  }
-}
-```
-
-## 3. Lazy Modules & Permissions
-
-When creating new feature modules with lazy loading:
-
-- Use `loadChildren` with dynamic import in parent routing module.
-- In the module's routing file, protect the route with `NgxPermissionsGuard`.
-
-**Example**:
-```typescript
-{
-  path: '',
-  component: ViaticosComponent,
-  data: {
-    title: 'Liquidacion Viaticos',
-    option: ROUTES_PERMISSION_CODES.viaticos_view,
-    permissions: {
-      only: ROUTES_PERMISSION_CODES.viaticos_view,
-      redirectTo: '/admin/403'
-    }
-  },
-  canActivate: [NgxPermissionsGuard]
-}
-```
-**Important**: Match permission codes across menu, routing, and guards. Set `redirectTo: '/admin/403'` for unauthorized access.
-
-## 4. `*ngFor` with `trackBy`
-
-**Always provide trackBy to *ngFor. Without it, Angular recreates all DOM nodes on list change.**
-
-**Good (trackBy returns stable identity)**:
-```typescript
-export class MyComponent {
-  trackById(_index: number, item: MyItem): number {
-    return item.id;
-  }
-}
-```
-```html
-<div *ngFor="let item of items$ | async; trackBy: trackById">
-  {{ item.name }}
-</div>
-```
-
-**Rules**:
-- Always use trackBy on `*ngFor` (no exceptions).
-- Return stable identifier (ID field, primary key).
-- Use method reference in template (not arrow function call, e.g. `trackBy: trackById`).
-- Do not use index as trackBy if order can change.
-
-## 5. Uso Obligatorio de `QuickSearchComponent` (`<app-quick-search>`) en Selectores
-
-**Regla Mandatoria**:
-Siempre que se implemente o modifique un selector de opciones en cualquier formulario o vista del proyecto, se MUST utilizar el componente reutilizable `<app-quick-search>` (`QuickSearchComponent`), el cual integra el buscador con `ngx-mat-select-search`. Queda prohibido el uso de `<mat-select>` directo o selectores `<select>` nativos sin buscador.
-
-**Patrón de Implementación**:
-```html
-<app-quick-search
-  [dataProvider]="(opciones$ | async)"
-  [placeholder]="'Seleccione...'"
-  [displayField]="'nombre'"
-  [appearance]="'outline'"
-  formControlName="campo_id"
-  (selectionChange)="onSelectionChange($event)">
-</app-quick-search>
-```
-
-**Reglas**:
-- Enlazar reactivamente mediante `formControlName` o `[formControl]` (implementa `ControlValueAccessor`).
-- Pasar la propiedad `displayField` según el modelo (ejemplo: `'nombre'` para departamentos/ciudades o la propiedad equivalente).
-- Utilizar `(selectionChange)` cuando se requiera reaccionar al cambio de selección o ejecutar cascadas dinámicas (ej. Departamento -> Ciudad).
-
-## 6. Uso Obligatorio de `SweetAlertHelper` en lugar de `sweetalert2` directo
-
-**Regla Mandatoria**:
-Queda estrictamente prohibido importar `Swal` directamente de `sweetalert2` (`import Swal from 'sweetalert2'`) en componentes, servicios o directivas. Se DEBE inyectar el servicio centralizado `SweetAlertHelper` (`@services/core/sweet-alert-helper.service`) a través del constructor.
-
-**Patrón de Implementación**:
-```typescript
-import { Component } from '@angular/core';
-import { SweetAlertHelper } from '@services/core/sweet-alert-helper.service';
-
-@Component({ ... })
-export class MyComponent {
-  constructor(
-    private readonly sweetAlertHelper: SweetAlertHelper
-  ) {}
-
-  save(): void {
-    // Éxito / Alerta personalizada
-    this.sweetAlertHelper.createCustomAlert({
-      title: 'Título',
-      text: 'Registro guardado correctamente',
-      type: 'success'
-    });
-
-    // Manejo de excepciones
-    this.sweetAlertHelper.captureException({
-      message: 'Error al procesar la solicitud'
-    });
-  }
-}
-```
-
-**Reglas**:
-- Inyectar `SweetAlertHelper` vía constructor como dependencia (`private readonly sweetAlertHelper: SweetAlertHelper`).
-- Usar `this.sweetAlertHelper.createCustomAlert({ ... })` o `this.sweetAlertHelper.captureException(...)`.
-- Prohibir `import Swal from 'sweetalert2'` o `import swal from 'sweetalert2'` en el código nuevo o refactorizado.
-
-## 7. Single Subscription in `ngOnInit` / `initSubscriptions`
-
-**Never subscribe to Store selectors or Observables inside reload/refresh methods (`loadData()`, `loadItems()`) that can be called repeatedly.**
-
-- **Problem**: Calling `.subscribe()` inside `loadData()` every time a modal closes or a refresh action occurs creates memory leaks and accumulates duplicate active subscribers executing multiple times per emission.
-- **Rule**: Set up all subscriptions ONCE in `ngOnInit()` (or a dedicated `initSubscriptions()` called from `ngOnInit`) with `takeUntil(this.destroy$)`. Reload methods should ONLY dispatch actions (`this.store.dispatch(new Action())`).
-
-**Example**:
-```typescript
-// ❌ BAD (Subscribes on every reload)
-loadData(): void {
-  this.store.dispatch(new GetItemsAction());
-  this.items$.pipe(takeUntil(this.destroy$)).subscribe(items => { ... });
-}
-
-// ✅ GOOD (Subscribe once, reload only dispatches)
-ngOnInit(): void {
-  this.initSubscriptions();
-  this.loadData();
-}
-
-private initSubscriptions(): void {
-  this.items$.pipe(takeUntil(this.destroy$)).subscribe(items => {
-    this.gridData = items || [];
-  });
-}
-
-private loadData(): void {
-  this.store.dispatch(new GetItemsAction());
-}
-```
-
-## 8. HTML Heading Semantics (No Block Elements in Headings)
-
-**Never place `<div>`, `<p>`, or other block elements inside `<h1>`-`<h6>` tags.**
-
-- **Problem**: HTML specification prohibits block-level elements inside phrasing content tags (`<h1>`-`<h6>`). It breaks accessibility and DOM validation.
-- **Rule**: Keep headings and action buttons as siblings wrapped in a flexbox container.
-
-**Example**:
-```html
-<!-- ❌ BAD -->
-<h2 class="title-module">
-  Título
-  <div class="ms-3"><button ...>Nuevo</button></div>
-</h2>
-
-<!-- ✅ GOOD -->
-<div class="d-flex align-items-center">
-  <h2 class="title-module mb-0">Título</h2>
-  <button mat-stroked-button color="primary" class="ms-3" (click)="onNew()">
-    <mat-icon>add</mat-icon> Nuevo
-  </button>
-</div>
-```
-
-
-
+Report changed files, the lint and spec results, and anything not run.

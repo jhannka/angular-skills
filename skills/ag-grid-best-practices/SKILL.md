@@ -1,74 +1,41 @@
 ---
 name: ag-grid-best-practices
-description: >
-  Global AG-Grid best practices: Ivy compatibility, responsive layout (flexbox), theming, and state persistence.
-  Trigger: When configuring ag-grid-angular, setting up columns/renderers, fixing layout issues, or persisting grid state.
+description: "Trigger: ag-grid-angular, grid columns, cell renderer, frameworkComponents, grid state, filter model, Ivy. AG-Grid 18 on Angular 13: renderers, theme, height and restoring grid state."
 license: Apache-2.0
 metadata:
-  author: gentleman-programming
-  version: "1.0"
+  author: rh-team
+  version: "2.1"
+  scope: project
+  stack: "Angular 13.2, TypeScript 4.5, RxJS 6.5, NGXS 3.7, ag-grid 18"
 ---
 
-# AG-Grid Global Best Practices
+## Activation Contract
 
-This skill consolidates global rules and patterns for AG-Grid development.
+Load before configuring `ag-grid-angular`, custom cell renderers, grid layout or grid state persistence. The standard implementation (columns, resize, auto-size) is skill `ag-grid-style`.
 
-## 1. Angular 13+ (Ivy) Compatibility
+## Hard Rules
 
-**Never use `AgGridModule.withComponents([])` in Angular 13+. Use `AgGridModule` directly.**
+- Use `AgGridModule` directly, never `AgGridModule.withComponents([])`. Declare custom renderers in the module and register them in `frameworkComponents` of `GridOptions`.
+- Theme is `ag-theme-balham`; `ag-theme-alpine` is not used.
+- Grid height is `calc(100vh - Xpx)` in the component SCSS with `display: block` on `<ag-grid-angular>`: this is the established convention, do not replace it with flexbox `min-height: 0`.
+- Restore grid state through the shared `restoreGridState` helper (`src/app/utils/helper.ts`): `setFilterModel` and `setColumnState` run inside `setTimeout(..., 300)` to avoid a race.
+- Type the column state as `ReturnType<ColumnApi['getColumnState']>` instead of `any`.
+- A renderer's `refresh(params)` either reapplies the new params (call `agInit(params)`) and returns `true`, or returns `false` so ag-grid recreates it. Returning `true` without reading the params leaves stale data (PR 1864, `phone-row-card.component.ts`).
 
-- Import `AgGridModule` normally in your module.
-- Declare custom cell renderers in your module.
-- Configure renderers via `frameworkComponents` in `GridOptions`.
+## Decision Gates
 
-**Example**:
-```typescript
-// Component
-export class MyComponent {
-  gridOptions: GridOptions = {
-    frameworkComponents: {
-      btnEdit: BtnNominaTableCellRendererComponent
-    },
-    columnDefs: [
-      { cellRenderer: 'btnEdit' }
-    ]
-  };
-}
-```
+| Need | Read |
+|------|------|
+| Renderer example, sizing history, state helper | `references/ag-grid-rules.md` |
+| Column definitions, resize and auto-size | skill `ag-grid-style` |
+| Colors and typography | skill `ui-design-system` |
 
-## 2. Responsive Layout & Theming
+## Execution Steps
 
-**Always use `ag-theme-balham` class.**
+1. Read the matching section of the reference.
+2. Follow `ag-grid-style` for the grid itself; use this skill for renderers, layout and state.
+3. Run `npm run lint` and the component spec (`ng test --include <spec>`).
 
-- **Theme**: ALWAYS use `class="ag-theme-balham"`, never `ag-theme-alpine`. Confirmed against the codebase: 206 usages of `ag-theme-balham`, 0 of `ag-theme-alpine`.
-- **Grid Sizing**: use `calc(100vh - Xpx)` in the component SCSS with `display: block` on `<ag-grid-angular>` — this is this codebase's actual, established convention (163 SCSS files use this pattern, including files edited the same day this was last verified), not the flexbox + `min-height: 0` approach a prior version of this rule recommended. Full detail and the rest of the AG-Grid v18-specific rules (column resize, async auto-sizing, `id` column hiding, `cellRenderer` sanitization) live in the `ag-grid-style` skill — read that one for HTML/SCSS/TS implementation detail; this section only covers the corrected sizing/theming fact.
+## Output Contract
 
-⚠️ **Correction (2026-08-28):** a prior version of this rule said *"Never use fixed pixel heights or fragile `calc(100vh - Xpx)`. Use flexbox + `min-height: 0`"* — this was aspirational and never matched actual practice in this codebase. Verified via grep: `calc(100vh` appears in 163 `.scss` files (vs. 9 for `min-height:\s*0`, most of those likely unrelated to grid sizing), and the most recently modified files at verification time (same-day edits) still used the `calc(100vh - Xpx)` pattern — confirming it as the live convention, not legacy debt being phased out. `ag-grid-style` (this project's own authored skill, not a generic import) already documented `calc(100vh - Xpx)` correctly; this skill was the one out of sync with reality.
-
-## 3. Grid State Persistence
-
-Best practices for persisting and restoring AG Grid state (filters, columns) avoiding race conditions and typing errors.
-
-- **Avoid Race Conditions**: When restoring state, wrap `setFilterModel` and `setColumnState` in a `setTimeout(() => {}, 300)`.
-- **Typing**: Type `ColumnState` dynamically as `ReturnType<ColumnApi['getColumnState']>` to avoid `any` in older versions.
-- **Global Helper**: Use a global `restoreGridState` helper.
-
-**Example**:
-```typescript
-export function restoreGridState(
-  gridApi: GridApi | undefined,
-  gridColumnApi: ColumnApi | undefined,
-  savedFilterModel: { [key: string]: unknown } | undefined,
-  savedColumnState: ReturnType<ColumnApi['getColumnState']> | undefined
-) {
-  setTimeout(() => {
-    if (gridApi && savedFilterModel) {
-      gridApi.setFilterModel(savedFilterModel);
-      gridApi.onFilterChanged();
-    }
-    if (gridColumnApi && savedColumnState) {
-      gridColumnApi.setColumnState(savedColumnState);
-    }
-  }, 300);
-}
-```
+Report changed files, the lint and spec results, and anything not run.

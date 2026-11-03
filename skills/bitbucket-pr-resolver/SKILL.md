@@ -4,7 +4,7 @@ description: "Trigger: Bitbucket PR, PR comments, PRISM findings, review comment
 license: Apache-2.0
 metadata:
   author: rh-team
-  version: "2.0"
+  version: "2.1"
   scope: project
   stack: "Bitbucket REST 2.0, PowerShell scripts, workspace softgbq, base branch develop"
 ---

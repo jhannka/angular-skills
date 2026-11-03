@@ -1,109 +1,45 @@
 ---
 name: typescript-best-practices
-description: >
-  Global TypeScript and Angular Form/Module best practices: strict typing, form initialization, and module structure.
-  Trigger: When writing TypeScript code, defining Angular modules, or initializing reactive forms.
+description: "Trigger: TypeScript, strict typing, any, FormControl, reactive form initialization, module structure, unhandled promise in frontend_rh. Typing, form and module rules for TypeScript 4.5."
 license: Apache-2.0
 metadata:
-  author: gentleman-programming
-  version: "1.0"
+  author: rh-team
+  version: "2.1"
+  scope: project
+  stack: "Angular 13.2, TypeScript 4.5, RxJS 6.5, NGXS 3.7, ag-grid 18"
 ---
 
-# TypeScript & Angular Structure Global Best Practices
+## Activation Contract
 
-This skill consolidates global rules and patterns for TypeScript typing and Angular component/form structure.
+Load before writing TypeScript, a reactive form, an interface or a feature module under `src/app`.
 
-## 1. TypeScript Strict Typing
+## Hard Rules
 
-**Never use `any`. Use specific interfaces, types, or generics.**
+- Never `any`: use interfaces, generics or `unknown`. HTTP calls return `Observable<IResponse<T>>`; a call with no body returns `void`.
+- No tsconfig enables `strict`, `strictNullChecks` or `noImplicitAny`; write code as if they were on, and do not add casts to silence them.
+- Initialize form controls to `null` (booleans explicitly `false`/`true`) and load data later with `patchValue()` in `ngOnInit`.
+- A feature module has one folder per component (`.ts`, `.html`, `.scss`); the `.module.ts`, `-routing.module.ts` and `.interface.ts` stay at the feature root; names are kebab-case.
+- Check the runtime type (`typeof`, `instanceof`) before using an external payload; do not trust `as` casts.
+- No `async` callback inside `.subscribe()` without a surrounding `try/catch`; prefer `from()` with `catchError` in the pipe.
+- No inline `import(...)` types; use static imports at the top of the file.
+- Domain interfaces live in `src/app/core/interfaces/*.interface.ts` (`@core/interfaces`), never inside a `*.service.ts`.
+- A function that follows `rejection`, `cause` or `parent` links tracks the objects it visited (`Set`) and stops on a cycle; a self-referencing error must not overflow the stack (`src/app/utils/chunk-load-error.ts`, PR 1888).
+- Validate an object before rest/spread destructuring. Check numeric ids with `id == null` or `Number.isFinite(id) && id > 0`, never `!id` (0 is falsy).
 
-- **HTTP Responses**: Type as `Observable<IResponse<IViaticos>>`.
-- **Method Returns**: Use `void` when a method (like DELETE) returns nothing.
-- **Unknowns**: Use `unknown` if the type is truly unknown.
-- **Strict Mode**: Ensure `strictNullChecks` and `strictPropertyInitialization` are enabled.
+## Decision Gates
 
-**Example**:
-```typescript
-// ❌ BAD
-changeStatus(data: any): Observable<any> { ... }
+| Need | Read |
+|------|------|
+| Examples and rationale for each rule | `references/typescript-rules.md` |
+| Component class order and injection rules | skill `angular-component-structure` |
+| Selectors and state typing | skill `ngxs-best-practices` |
 
-// ✅ GOOD
-changeStatus(data: IChangeStatusRequest): Observable<IResponse<IViaticos>> { ... }
-```
+## Execution Steps
 
-## 2. Form Initialization Pattern
+1. Read the matching section of the reference.
+2. Type first (interface in `@core/interfaces`), then the code that uses it.
+3. Run `npm run lint` and the touched spec (`ng test --include <spec>`).
 
-**Form controls MUST initialize to `null` (not empty strings) to prevent premature validation errors before data loads.**
+## Output Contract
 
-- Every text/numeric/select field initializes to `null`.
-- Boolean toggles initialize to `false` or `true` explicitly.
-- Load data later via `patchValue()` in `ngOnInit`.
-
-**Example**:
-```typescript
-createForm() {
-  this.formData = this.fb.group({
-    id: [null],
-    empleado_id: [null, Validators.required],
-    activo: [true], // boolean exception
-  });
-}
-```
-
-## 3. Module & Component Structure
-
-**Feature modules MUST separate components into subdirectories, not mix all files in one folder.**
-
-- **Folder per Component**: Each component gets its own folder (`viaticos/viaticos.component.ts`, `.html`, `.scss`).
-- **Module Root**: The `.module.ts`, `-routing.module.ts`, and `.interface.ts` files stay at the feature root.
-- **Naming**: Use kebab-case matching the component selector prefix.
-
-**Example Structure**:
-```
-src/app/admin/pages/nomina/viaticos/
-  ├── viaticos/                   (Component folder)
-  │   ├── viaticos.component.ts
-  │   ├── viaticos.component.html
-  │   └── viaticos.component.scss
-  ├── viaticos.module.ts          (Module root)
-  ├── viaticos-routing.module.ts
-  └── viaticos.interface.ts
-```
-
-## 4. Runtime Type Checking vs Type Assertions
-
-**Avoid forcefully casting external payloads or any types (`as string | Date`) if you are not sure of their runtime type.**
-
-- When a variable might be a `string` or a `Date`, check its runtime type before manipulating it.
-- **Example:** Use `typeof dateVal === 'string'` or `dateVal instanceof Date` instead of just writing `castDate(dateVal as Date)` which will fail silently at runtime if it's not a Date.
-
-## 5. RxJS Unhandled Promise Rejections
-
-**Avoid passing `async` callbacks directly into RxJS `.subscribe()` blocks without proper exception handling.**
-
-- Passing `subscribe(async res => { ... })` often hides unhandled promise rejections (like a sweetalert that the user cancels or throws).
-- **Rule:** Use `async/await` inside `subscribe` ONLY if you wrap the entire block in a `try/catch`.
-- **Better:** Convert promises to observables using `from()` and handle them in the `.pipe()` chain using `catchError()`.
-
-## 6. No Inline Dynamic Imports for Typings
-
-**Strictly prohibit the use of inline `import(...)` for typing parameters or variables.**
-
-- **Why:** Using `(state: { my_feature: import('...').StateModel })` inside a `.select()` or any other method is considered a hacky workaround. It breaks clean architecture, clutters the component logic with file paths, and ruins readability.
-- **Rule:** Always use static imports at the top of the file (`import { StateModel } from '...'`) and type your parameters cleanly.
-- **NGXS Specific:** For state selection, prefer using static selectors exposed by the State class itself (e.g., `this.store.select(ConfigNominaState.info)`) rather than manually typing the callback state parameter. For selector memoization and strict state typing beyond this rule, see `ngxs-best-practices` skill §2-3.
-
-## 7. Decouple Domain Entities from HTTP Infrastructure
-
-**Domain interfaces and models must NEVER be defined inside `*.service.ts` files.**
-
-- **Problem**: When domain entities are declared inside HTTP services, other modules (components, NGXS actions, state) are forced to import from infrastructure services, creating tight coupling and circular dependency risks.
-- **Rule**: Place shared domain contracts in dedicated interface files under `src/app/core/interfaces/*.interface.ts` (or `@core/interfaces`).
-
-## 8. Defensive Object Validation & Falsy ID Checks
-
-**Always validate objects before rest/spread destructuring, and avoid falsy checks on numeric IDs.**
-
-- **Destructuring Validation**: `if (!data || typeof data !== 'object') throw new Error(...)` before executing `const { id, ...payload } = data;` to avoid runtime `TypeError`.
-- **Falsy ID Validation**: Never check numeric IDs with `if (!id)`, as `0` is a valid number but falsy in JavaScript. Always use `if (id == null)` or `if (typeof id !== 'number' || !Number.isFinite(id) || id <= 0)`.
-
+Report changed files, the lint and spec results, and anything not run.

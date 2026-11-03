@@ -32,7 +32,8 @@ Load when the user asks to resolve, review or answer comments of a Bitbucket pul
 | Real bug or simple typo | Fix, reply `Corregido en <sha>: ...`, resolve after the push |
 | False positive | Reply with evidence, leave open |
 | Architecture / tech debt | Reply with the justification, leave open |
-| Rule someone could break again | Record it in a project skill (Execution Steps, step 6) |
+| Rule someone could break again | Add it as a rule to the project skill that covers the area (step 6) |
+| No new rule | Still record the PR, the comment and the verdict in `references/gotchas.md`, Triage (step 6) |
 
 ## Execution Steps
 

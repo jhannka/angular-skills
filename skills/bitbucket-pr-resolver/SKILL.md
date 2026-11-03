@@ -39,8 +39,8 @@ Load when the user asks to resolve, review or answer comments of a Bitbucket pul
 
 1. Fetch the active comments with `get_pr_comments.ps1 -prId <ID>`.
 2. Read `.agents/skills/README.md` and the `SKILL.md` that match the files each comment touches.
-3. Write a checklist: comment ID, file, diagnosis, decision, and the skills to update.
-4. Present the plan and wait for explicit approval (code and skill changes) before editing.
+3. Write a checklist: comment ID, file, diagnosis, decision, and for each one the skill change: a new rule (which skill) or "no new rule" and why.
+4. Present the plan and wait for explicit approval (code and skill changes) before editing; that approval covers step 6.
 5. Apply the fixes, run the tests, commit.
 6. Update skills (mandatory after the fixes are committed). For each fixed comment, or false positive worth recording, ask whether someone could break the rule again in this repo; if not, stop. Otherwise add one verifiable rule to the skill in the README table that covers the area; if none covers it, create `rh-<topic>/SKILL.md` following the README standard and add it to the table. Bump `metadata.version`, cite the proof, commit with `docs(skills): ...`, and refresh your tool's skill index (README, "Registry").
 7. After the user approves the push, post replies and resolve with the other two scripts.

@@ -22,7 +22,7 @@ Load when the user asks to resolve, review or answer comments of a Bitbucket pul
 - Commit and push are separate decisions: commit on the PR branch, ask before pushing, then publish replies and resolve in one pass.
 - Conventional commits; no AI attribution and no `Co-Authored-By`.
 - Spanish text with accents breaks from the shell: write the `.ps1` as UTF-8 **with BOM** and run it exactly once.
-- Never print the API token.
+- Never print the API token, and never write it in a script, a `.ps1` for replies or any file. Do not grep or `cat` the scripts' parameter or auth lines: they once printed it on screen (PR 1888).
 
 ## Decision Gates
 

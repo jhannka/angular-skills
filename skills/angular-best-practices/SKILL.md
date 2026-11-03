@@ -4,7 +4,7 @@ description: "Trigger: Angular component, module, template, ngOnInit, subscripti
 license: Apache-2.0
 metadata:
   author: rh-team
-  version: "2.2"
+  version: "2.3"
   scope: project
   stack: "Angular 13.2, TypeScript 4.5, RxJS 6.5, NGXS 3.7, ag-grid 18"
 ---

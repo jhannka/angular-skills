@@ -4,7 +4,7 @@ description: "Trigger: Angular component, module, template, ngOnInit, subscripti
 license: Apache-2.0
 metadata:
   author: rh-team
-  version: "2.1"
+  version: "2.2"
   scope: project
   stack: "Angular 13.2, TypeScript 4.5, RxJS 6.5, NGXS 3.7, ag-grid 18"
 ---
@@ -19,6 +19,7 @@ Load before creating or changing an Angular component, module, route, template o
 - Subscribe once, in `ngOnInit`/`initSubscriptions`, with `takeUntil(this.destroy$)`. Reload methods only dispatch actions, never subscribe.
 - `ngOnDestroy` is the last member: `destroy$.next(true)` then `destroy$.complete()`; never `unsubscribe()` on the Subject.
 - Lazy feature modules use `loadChildren` with a dynamic import; the route is protected with `NgxPermissionsGuard` and `redirectTo: '/admin/403'`. Permission codes match across menu, routing and guards.
+- A `setInterval` created in a service keeps its handle and clears it when its condition ends (no session, no subscriber); never leave an anonymous interval running for the whole app life (`AppService.startVersionPolling`, PR 1888).
 - Every `*ngFor` has `trackBy` returning a stable id; never iterate an inline array literal.
 - Every select control is `<app-quick-search>`; raw `<mat-select>` or native `<select>` without search is not allowed.
 - Alerts go through `SweetAlertHelper`; no `import Swal from 'sweetalert2'` in new or refactored code.

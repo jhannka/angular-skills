@@ -4,7 +4,7 @@ description: "Trigger: TypeScript, strict typing, any, FormControl, reactive for
 license: Apache-2.0
 metadata:
   author: rh-team
-  version: "2.1"
+  version: "2.2"
   scope: project
   stack: "Angular 13.2, TypeScript 4.5, RxJS 6.5, NGXS 3.7, ag-grid 18"
 ---

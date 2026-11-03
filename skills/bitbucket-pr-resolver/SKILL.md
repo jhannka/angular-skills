@@ -47,4 +47,4 @@ Load when the user asks to resolve, review or answer comments of a Bitbucket pul
 
 ## Output Contract
 
-Final report: comments fixed, replied, and left open (with reasons), commits, tests run with results, and the skills updated or created. Edge cases and API details: `references/gotchas.md`.
+Final report: comments fixed, replied, and left open (with reasons), commits, tests run with results, and the skills updated or created (never empty). Edge cases and API details: `references/gotchas.md`.
